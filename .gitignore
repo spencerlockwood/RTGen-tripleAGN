@@ -1,0 +1,22 @@
+# local configuration
+scripts/config.sh
+
+# Python
+__pycache__/
+*.pyc
+
+# run outputs (in case the pipeline is run inside the repository itself)
+/*.inp
+/*.dat
+/*.out
+/*.png
+/input/*.DAT
+/input/stellar_spectrum.TXT
+/sph_interpolation/*.npy
+/sph_interpolation/*.txt
+/sph_interpolation/*.out
+/stars_model/*.out
+/dust_obscuration_analysis/
+/sys*_snap*/
+*.DS_Store
+*~

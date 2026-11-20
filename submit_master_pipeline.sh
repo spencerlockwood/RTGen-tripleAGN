@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=20GB
-#SBATCH --time=61:00:00
+#SBATCH --time=8:00:00
 #SBATCH --output=job.out
+
+# Modules + Python environment, written by scripts/make_run.sh from scripts/config.sh
+source rtgen_env.sh
 
 # First, copy the input params and constants files everywhere
 cp input/input_params.py dust_transfer/

@@ -81,20 +81,21 @@ def getSmoothingLenght(xx,yy,zz, nlast=32):
     dummyarr[:,1] = yy.copy()
     dummyarr[:,2] = zz.copy()
 
-    # Initialize array of smoothing lenghts
-    hharr = np.zeros((len(xx)))
-    
     # Initialize KDTree
     kdtree = KDTree(dummyarr)
 
-    # Now loop over particles. No parallelization here, as the query inside the loop is parallelized
-    for ii in range(len(xx)):
+    # Query all particles in a single batched call instead of looping over
+    # particles one at a time in Python. KDTree.query accepts an (N,3) array
+    # directly and parallelizes internally across workers, so this replaces
+    # what was previously a serial, per-particle Python loop (the actual
+    # bottleneck for large particle counts) with one vectorized, multi-
+    # threaded call. workers=-1 uses all available cores.
+    # k=nlast returns the distances to the nearest nlast neighbors for every
+    # particle at once; we keep the nlast-th (largest) distance per particle,
+    # matching the original k=[nlast] behavior.
+    dd, ind = kdtree.query(dummyarr, k=nlast, workers=-1)
 
-        dd, ind = kdtree.query([xx[ii], yy[ii], zz[ii]], k=[nlast])
-
-        #printd)
-
-        hharr[ii] = dd[0]/2.
+    hharr = dd[:, -1] / 2.
 
     return hharr
 
@@ -459,28 +460,42 @@ yy_star += ylbox/2
 zz_star += zlbox/2
 
 print('... done!')
+print('Particles after threshold cut: %d gas, %d star' % (len(xx), len(xx_star)))
 
 print('')
 
 # Sommthing lengths
 print('Computing smoothing lenghts ...')
+t0 = time.time()
 hharr = getSmoothingLenght(xx,yy,zz, nlast=nLastNeigh)
-#hharr_star = pars.softlength * np.ones(len(xx_star))  #getSmoothingLenght(xx_star,yy_star,zz_star, nlast=nLastNeigh)
-print('... done!')
+hharr_star = pars.softlength * np.ones(len(xx_star))  # Stars are collisionless: use a fixed gravitational softening length, not an SPH kernel derived from neighbor spacing
+print('... done! (%.1f s, %d gas particles)' % (time.time()-t0, len(xx)))
+xlcell_diag = xlbox / nx
+deltacell_diag = np.ceil(2*hharr / xlcell_diag)
+print('Gas smoothing length hh [kpc]: min=%.4f  median=%.4f  mean=%.4f  max=%.4f' %
+      (np.min(hharr), np.median(hharr), np.mean(hharr), np.max(hharr)))
+print('Implied cells-per-axis (2*deltacell+1): min=%d  median=%d  max=%d' %
+      (2*np.min(deltacell_diag)+1, 2*np.median(deltacell_diag)+1, 2*np.max(deltacell_diag)+1))
+print('Implied worst-case cells touched by single particle (cells-per-axis^3): %.3e' %
+      ((2*np.max(deltacell_diag)+1)**3))
 
 print('')
 
 # Stellar particles interpolation
 if star_kernel == 'CIC':
     print('Doing CIC to interpolate collisionless star particles ...')
+    t0 = time.time()
     weights_star = get_cic(xx_star, yy_star, zz_star, np.ones(len(xx_star)), xlbox, nx)
     massnew_star = get_cic(xx_star, yy_star, zz_star, mass_star, xlbox, nx)
     metnew_star = get_cic(xx_star, yy_star, zz_star, metallicity_star, xlbox, nx)
     tformnew_star = get_cic(xx_star, yy_star, zz_star, tform_star, xlbox, nx)
+    print('... done! (%.1f s, %d star particles)' % (time.time()-t0, len(xx_star)))
 
 elif star_kernel == 'SPH':
     print('Doing SPH interpolation of star particles ...')
-    massnew_star, vxnew_empty, vynew_empty, vznew_empty, tempnew_empty, metnew_star, tformnew_star = SPHInterpolator(xx_star, yy_star, zz_star, mass_star, vx, vy, vz, temperature, metallicity_star, tform_star, xlbox, ylbox, zlbox, nx, ny, nz, hharr, "star")
+    t0 = time.time()
+    massnew_star, vxnew_empty, vynew_empty, vznew_empty, tempnew_empty, metnew_star, tformnew_star = SPHInterpolator(xx_star, yy_star, zz_star, mass_star, vx, vy, vz, temperature, metallicity_star, tform_star, xlbox, ylbox, zlbox, nx, ny, nz, hharr_star, "star")
+    print('... done! (%.1f s, %d star particles)' % (time.time()-t0, len(xx_star)))
 
 else:
     print('No other options implemented so far. Revise zour choice. Falling back to CIC.')
@@ -491,9 +506,9 @@ else:
 
 # Gas particles interpolation
 print('Doing SPH interpolation of gas particles ...')
+t0 = time.time()
 massnew, vxnew, vynew, vznew, tempnew, metnew, tformnew_empty = SPHInterpolator(xx, yy, zz, mass, vx, vy, vz, temperature, metallicity, tform_star, xlbox, ylbox, zlbox, nx, ny, nz, hharr, "gas")
-
-print('... done!')
+print('... done! (%.1f s, %d gas particles)' % (time.time()-t0, len(xx)))
 
 print('')
 
@@ -583,4 +598,3 @@ if dt>60:
         uu = 'hours'
 
 print('Elapsed ' + str(dt) + ' ' +  uu + ' ...')
-

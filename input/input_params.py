@@ -6,10 +6,27 @@
 input_dir = '../input/'
 output_dir = '../output/'
 
-input_galaxy_dir = '/data/fsinig/simulations/run13/'
-input_galaxy_filename = 'galaxy_cc6_v150_gf0.3_lres_MC.01200'
+# Filled in by scripts/make_run.sh from SIM_DIR / SIM_PREFIX in scripts/config.sh
+input_galaxy_dir = '@SIMDIR@'
+input_galaxy_filename = '@SIMPREFIX@.@SNAP@'
 
-tsnap = 1.2 # In Gyr
+# Triple-AGN system @SYSNUM@ (snapshot @SNAP@, z = @Z@)
+# halo_number is the tangos halo_number, i.e. the 1-based row in the AHF_halos
+# file, which pynbody calls halo_numbers='v1'. Do not switch to 0-based
+# ('file-order'): that is a different halo several hundred kpc away.
+halo_number = @HALO@
+halo_numbering = 'v1'
+# BH iords: [host, N1, N2]. The RT grid is centred on the host BH.
+bh_iords = [@BH1@, @BH2@, @BH3@]
+# Host BH position from the triple-AGN catalogue (proper kpc, box frame); only
+# printed by rewrite_sim.py as a cross-check against the snapshot.
+host_pos_kpc = [@POS@]
+# Intrinsic AGN bolometric luminosities [erg/s] of [host, N1, N2] from the
+# catalogue (L_bol = 0.1 Mdot c^2). Not used by the RT (the AGN are NOT light
+# sources); only read by postproc/band_luminosity.py. None = not given.
+bh_lbol_erg_s = @LBOL@
+
+tsnap = None # In Gyr. No longer used: rewrite_sim.py reads the age of the universe from the snapshot
 
 # Input file names: these should be standard, do not change         
 mass_gas_filename = 'mass_gas.DAT'
@@ -47,7 +64,11 @@ nphot_mono = int(1e7)
 scattering_mode_max = 2
 
 # Inclination used to render images
-# incl = 0 -->edge-on, incl = 90 --> face-on
+# NOT USED: the viewing angle is hard-coded in the 'radmc3d image' commands of
+# submit_master_pipeline.sh and submit_dust_obscuration.sh (incl 90). Because
+# sph_interpolation.py swaps the y and z axes when writing the grid, incl 90
+# looks along the simulation z axis: image x = sim x, image y = sim y, and the
+# observer sits on the -z side. See docs/band_luminosities.md.
 incl = 90.
 
 # **********************************************
@@ -87,7 +108,7 @@ h2_to_co_convfact = 7.5e-8
 h2_to_co_slope = 1e6 # CHANGE THIS
 h2_to_co_zeropoint = 1e6 # CHANGE THIS
 
-tgas_eq_tdust = 1 # 0: read gas temperature, 1: Tgas=Tdust
+tgas_eq_tdust = 0 # 0: read gas temperature, 1: Tgas=Tdust
 
 ortho_to_para_H2_perc = 0.75 # Ortho/Para H2 = 3, from Sternberg & Neufeld (1998)
 
@@ -165,7 +186,7 @@ nlam_kappa = 1000
 # **********************************************
 # **********************************************
 # PARALLELIZATION
-nthreads = 16
+nthreads = 64 # updated from 16
 parallel = True
 
 # **********************************************    
@@ -187,9 +208,9 @@ Om0 = 0.27
 Tcmb = 2.725
 
 zstart = 4. # Starting redshift of the simulation
-zreal = 2.17347
-z_optical = 2.
-z_alma = 2.
+zreal = @Z@        # snapshot redshift
+z_optical = @Z@    # redshift used to shift filter curves (filters/use_filter.py)
+z_alma = @Z@
 
 # **********************************************                                                                             
 # **********************************************               

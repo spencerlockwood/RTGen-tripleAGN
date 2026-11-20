@@ -45,7 +45,7 @@ touching the others.
 ### 1a. Clone
 
 ```bash
-git clone https://github.com/<your-account>/RTGen-tripleAGN.git
+git clone https://github.com/spencerlockwood/RTGen-tripleAGN.git
 cd RTGen-tripleAGN
 ```
 

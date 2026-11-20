@@ -29,7 +29,7 @@ For each system, it produces:
 ## Quick start
 
 ```bash
-git clone https://github.com/<your-account>/RTGen-tripleAGN.git && cd RTGen-tripleAGN
+git clone https://github.com/spencerlockwood/RTGen-tripleAGN.git && cd RTGen-tripleAGN
 cp scripts/config.example.sh scripts/config.sh && $EDITOR scripts/config.sh   # paths, modules, venv
 source scripts/config.sh
 
